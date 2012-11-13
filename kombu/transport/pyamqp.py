@@ -73,6 +73,9 @@ class Transport(base.Transport):
         (StdConnectionError, ) + amqp.Connection.connection_errors
     )
     channel_errors = (StdChannelError, ) + amqp.Connection.channel_errors
+    recoverable_connection_errors = \
+        amqp.Connection.recoverable_connection_errors
+    recoverable_channel_errors = amqp.Connection.recoverable_channel_errors
 
     nb_keep_draining = True
     driver_name = 'py-amqp'
