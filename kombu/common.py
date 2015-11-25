@@ -20,7 +20,7 @@ from itertools import count
 
 from . import serialization
 from .entity import Exchange, Queue
-from .exceptions import StdChannelError
+from amqp import RecoverableConnectionError
 from .log import get_logger
 from .messaging import Consumer as _Consumer
 from .utils import uuid
@@ -93,8 +93,7 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
 def _maybe_declare(entity):
     channel = entity.channel
     if not channel.connection:
-        raise StdChannelError("channel disconnected")
-
+        raise RecoverableConnectionError('channel disconnected')
     if entity.can_cache_declaration:
         declared = channel.connection.client.declared_entities
         ident = hash(entity)

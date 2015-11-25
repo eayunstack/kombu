@@ -448,11 +448,18 @@ class Connection(object):
         """
         def _ensured(*args, **kwargs):
             got_connection = 0
+            conn_errors = self.recoverable_connection_errors
+            chan_errors = self.recoverable_channel_errors
+            has_modern_errors = self.transport.recoverable_connection_errors
             for retries in count(0):  # for infinity
                 try:
                     return fun(*args, **kwargs)
-                except self.recoverable_connection_errors, exc:
-                    if got_connection:
+                except conn_errors as exc:
+                    if got_connection and not has_modern_errors:
+                        # transport can not distinguish between
+                        # recoverable/irrecoverable errors, so we propagate
+                        # the error if it persists after a new connection was
+                        # successfully established.
                         raise
                     if max_retries is not None and retries > max_retries:
                         raise
@@ -474,7 +481,7 @@ class Connection(object):
                     if on_revive:
                         on_revive(new_channel)
                     got_connection += 1
-                except self.recoverable_channel_errors, exc:
+                except chan_errors as exc:
                     if max_retries is not None and retries > max_retries:
                         raise
                     self._debug('ensure channel error: %r', exc, exc_info=1)
@@ -800,6 +807,8 @@ class Connection(object):
 
     @cached_property
     def recoverable_connection_errors(self):
+        """List of connection related exceptions that can be recovered from,
+        but where the connection must be closed and re-established first."""
         try:
             return self.transport.recoverable_connection_errors
         except AttributeError:
@@ -811,6 +820,8 @@ class Connection(object):
 
     @cached_property
     def recoverable_channel_errors(self):
+        """List of channel related exceptions that can be automatically
+        recovered from without re-establishing the connection."""
         try:
             return self.transport.recoverable_channel_errors
         except AttributeError:
